@@ -1,6 +1,6 @@
 defmodule TextGraph2d do
   @moduledoc """
-  Documentation for TextGraph2d.
+  Documentation for `TextGraph2d`.
   """
 
   def parse(bin) do
