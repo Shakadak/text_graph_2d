@@ -24,6 +24,50 @@ defmodule TextGraph2d do
     end
   end
 
+  def tokenize_grid(grid) do
+    Map.new(grid, fn {xy, g} -> {xy, {g, tokenize(g)}} end)
+  end
+
+  def validate(tokenized_grid) do
+    Enum.map(tokenized_grid, fn {xy, {g, _}} ->
+      xs =
+        [
+          validate(tokenized_grid, xy, :up),
+          validate(tokenized_grid, xy, :down),
+          validate(tokenized_grid, xy, :left),
+          validate(tokenized_grid, xy, :right),
+        ]
+        |> Enum.filter(fn x -> match?({:error, _}, x) end)
+        |> Enum.map(fn {:error, {:unexpected_neighbor, n}} -> n end)
+
+      case xs do
+        [] -> {xy, {g, :ok}}
+        xs -> {xy, {g, {:unexpected_neighbors, xs}}}
+      end
+    end)
+    |> Enum.filter(fn x -> match?({_, {_, {:unexpected_neighbors, _}}}, x) end)
+    |> Map.new()
+    |> case do
+      x when map_size(x) == 0 -> :ok
+      x when map_size(x) > 0 -> {:error, x}
+    end
+  end
+
+  def validate(tokenized_grid, xy, direction) do
+    {_, token} = Map.fetch!(tokenized_grid, xy)
+    neighbor_xy = neighbor_xy(xy, direction)
+    {_, neighbor_token} = neighbor = Map.get(tokenized_grid, neighbor_xy, {" ", :empty})
+    case neighbor_token in Map.fetch!(expected_neighbors(token), direction) do
+      true -> :ok
+      false -> {:error, {:unexpected_neighbor, {neighbor_xy, neighbor}}}
+    end
+  end
+
+  def neighbor_xy({x, y}, :up), do: {x, y - 1}
+  def neighbor_xy({x, y}, :down), do: {x, y + 1}
+  def neighbor_xy({x, y}, :left), do: {x - 1, y}
+  def neighbor_xy({x, y}, :right), do: {x + 1, y}
+
   def expected_neighbors(token) do
     case token do
       :empty ->
@@ -70,16 +114,16 @@ defmodule TextGraph2d do
         %{
           up:     all_tokens(),
           down:   all_tokens(),
-          left:   all_tokens() -- [:end_identifier],
-          right:  all_tokens() -- [:end_identifier, :vertical_edge, :horizontal_edge, :intersection_edge, :grapheme],
+          left:   all_tokens() -- [:end_identifier, :vertical_edge, :horizontal_edge, :intersection_edge],
+          right:  all_tokens() -- [:end_identifier, :grapheme],
         }
 
       :grapheme ->
         %{
           up:     all_tokens(),
           down:   all_tokens(),
-          left:   all_tokens() -- [:start_identifier, :vertical_edge, :horizontal_edge, :intersection_edge],
-          right:  all_tokens() -- [:end_identifier,   :vertical_edge, :horizontal_edge, :intersection_edge],
+          left:   all_tokens() -- [:end_identifier, :vertical_edge, :horizontal_edge, :intersection_edge],
+          right:  all_tokens() -- [:start_identifier,   :vertical_edge, :horizontal_edge, :intersection_edge],
         }
     end
   end
