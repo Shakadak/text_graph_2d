@@ -1,0 +1,5 @@
+bin = File.read!("test_graph.txt")
+grid = TextGraph2d.parse(bin)
+tokenized_grid = TextGraph2d.tokenize_grid(grid)
+:ok = TextGraph2d.validate(tokenized_grid)
+identifiers = TextGraph2d.gather_identifiers(tokenized_grid)
